@@ -21,32 +21,38 @@ import RecuperarContrasena from "./pages/RecuperarContrasena";
 
 function App() {
   const isAuthenticated = !!localStorage.getItem("access_token");
+  const isAdmin = (() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      return user.is_staff || user.rol === "admin";
+    } catch { return false; }
+  })();
 
   return (
     <>
-      {isAuthenticated && <SOSButton />}
+      {isAuthenticated && !isAdmin && <SOSButton />}
       <Routes>
         {/* Públicas */}
-        <Route path="/"                      element={<Home />} />
-        <Route path="/login"                 element={<Login />} />
-        <Route path="/registro"              element={<Registro />} />
-        <Route path="/activar/:uidb64/:token" element={<ActivarCuenta />} />
-        <Route path="/recuperar-contrasena"  element={<RecuperarContrasena />} />
-        <Route path="/privacidad"            element={<PoliticaPrivacidad />} />
-        <Route path="/terminos"              element={<TerminosCondiciones />} />
-        <Route path="/contacto"              element={<Contacto />} />
+        <Route path="/"                       element={<Home />} />
+        <Route path="/login"                  element={<Login />} />
+        <Route path="/registro"               element={<Registro />} />
+        <Route path="/activar/:uidb64/:token"  element={<ActivarCuenta />} />
+        <Route path="/recuperar-contrasena"   element={<RecuperarContrasena />} />
+        <Route path="/privacidad"             element={<PoliticaPrivacidad />} />
+        <Route path="/terminos"               element={<TerminosCondiciones />} />
+        <Route path="/contacto"               element={<Contacto />} />
 
         {/* Privadas — requieren login */}
-        <Route path="/perfil"                element={<PrivateRoute><Perfil /></PrivateRoute>} />
-        <Route path="/comunidad"             element={<PrivateRoute><Comunidad /></PrivateRoute>} />
-        <Route path="/rutas"                 element={<PrivateRoute><Rutas /></PrivateRoute>} />
-        <Route path="/rutas/:id"             element={<PrivateRoute><DetalleRuta /></PrivateRoute>} />
-        <Route path="/rutas/:id/recorrido"   element={<PrivateRoute><RecorridoActivo /></PrivateRoute>} />
-        <Route path="/ranking"              element={<PrivateRoute><Ranking /></PrivateRoute>} />
-        <Route path="/juegos"               element={<PrivateRoute><Juegos /></PrivateRoute>} />
+        <Route path="/perfil"                 element={<PrivateRoute><Perfil /></PrivateRoute>} />
+        <Route path="/comunidad"              element={<PrivateRoute><Comunidad /></PrivateRoute>} />
+        <Route path="/rutas"                  element={<PrivateRoute><Rutas /></PrivateRoute>} />
+        <Route path="/rutas/:id"              element={<PrivateRoute><DetalleRuta /></PrivateRoute>} />
+        <Route path="/rutas/:id/recorrido"    element={<PrivateRoute><RecorridoActivo /></PrivateRoute>} />
+        <Route path="/ranking"               element={<PrivateRoute><Ranking /></PrivateRoute>} />
+        <Route path="/juegos"                element={<PrivateRoute><Juegos /></PrivateRoute>} />
 
         {/* Solo admin */}
-        <Route path="/dashboard"            element={<PrivateRoute adminOnly><AdminPanel /></PrivateRoute>} />
+        <Route path="/dashboard"             element={<PrivateRoute adminOnly><AdminPanel /></PrivateRoute>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
