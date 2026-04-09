@@ -254,3 +254,71 @@ def api_estadisticas_globales(request):
 def admin_rutas(request):
     rutas = Ruta.objects.all().order_by('-fecha_creacion')
     return render(request, 'admin/admin_rutas.html', {'rutas': rutas})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_ranking_juegos(request):
+    """
+    GET /api/ranking/ranking-juegos/
+    Devuelve top 20 de trivia y top 20 de mapa roto.
+    """
+    from django.db.models import Sum, Count, Max
+    from games.models import HistorialJuegoTrivia, HistorialMapaRoto
+ 
+    # --- TOP TRIVIA ---
+    trivia = (
+        HistorialJuegoTrivia.objects
+        .values('usuario__username', 'usuario__first_name', 'usuario__last_name')
+        .annotate(
+            total_puntos=Sum('puntos'),
+            partidas=Count('id'),
+            mejor_puntaje=Max('puntos'),
+        )
+        .order_by('-total_puntos')[:20]
+    )
+ 
+    top_trivia = [
+        {
+            'posicion': i + 1,
+            'username': r['usuario__username'],
+            'nombre_completo': f"{r['usuario__first_name']} {r['usuario__last_name']}".strip(),
+            'total_puntos': r['total_puntos'] or 0,
+            'partidas': r['partidas'],
+            'mejor_puntaje': r['mejor_puntaje'] or 0,
+        }
+        for i, r in enumerate(trivia)
+    ]
+ 
+    # --- TOP MAPA ROTO ---
+    PUNTOS_DIFICULTAD = {'facil': 50, 'normal': 100, 'dificil': 200}
+ 
+    mapa = (
+        HistorialMapaRoto.objects
+        .values('usuario__username', 'usuario__first_name', 'usuario__last_name', 'dificultad')
+        .annotate(partidas=Count('id'))
+        .order_by('usuario__username', 'dificultad')
+    )
+ 
+    # Agrupar por usuario y sumar puntos según dificultad
+    usuarios_mapa = {}
+    for r in mapa:
+        u = r['usuario__username']
+        if u not in usuarios_mapa:
+            usuarios_mapa[u] = {
+                'username': u,
+                'nombre_completo': f"{r['usuario__first_name']} {r['usuario__last_name']}".strip(),
+                'total_puntos': 0,
+                'partidas': 0,
+            }
+        pts = PUNTOS_DIFICULTAD.get(r['dificultad'], 50) * r['partidas']
+        usuarios_mapa[u]['total_puntos'] += pts
+        usuarios_mapa[u]['partidas'] += r['partidas']
+ 
+    top_mapa = sorted(usuarios_mapa.values(), key=lambda x: -x['total_puntos'])[:20]
+    for i, r in enumerate(top_mapa):
+        r['posicion'] = i + 1
+ 
+    return Response({
+        'trivia': top_trivia,
+        'mapa_roto': top_mapa,
+    })
